@@ -37,7 +37,10 @@
 <script>
 import * as PIXI from 'pixi.js'
 const Luban = require('./sdk')
-const lb = new LubanClient('10fcd40767474054ad3c25ae1a4d9c86', 'wx46f954bd23744e04')
+let lb
+if (location.hostname === 'cdn.nodesrv.com') {
+  lb = new LubanClient('10fcd40767474054ad3c25ae1a4d9c86', 'wx46f954bd23744e04')
+}
 const 样本数 = 10000
 const 人员活动范围 = 5
 const 每天活动人数比例 = 0.3
@@ -129,17 +132,21 @@ export default {
       inited: false,
       paused: false,
       nickname: '',
-      avatar: 'https://mmbiz.qpic.cn/mmbiz_png/HRPhFuUkDfpwH4H3tmmqjG5g0ibEnNLNAq85ibIqaibicbwdibXBqJx28icCD4AmpUmk3k7HHqST2bhaXuWuibuP4icN7g/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1'
+      avatar: ''
     }
   },
   mounted() {
-    lb.login().then(res => {
+    if (location.hostname === 'cdn.nodesrv.com') {
+      lb.login().then(res => {
+        this.showForm = true
+        this.nickname = res.nickname
+        this.avatar = res.headimgurl.replace(/132$/, '0')
+      }).catch(e => {
+        this.showForm = true
+      })
+    } else {
       this.showForm = true
-      this.nickname = res.nickname
-      this.avatar = res.headimgurl.replace(/132$/, '0')
-    }).catch(e => {
-      this.showForm = true
-    })
+    }
   },
   methods: {
     createPoint(color=0xFFFFFF) {
