@@ -482,6 +482,8 @@ html, body {
     background: #fff;
     display: inline-block;
     margin-right: 10px;
+    line-height: 40px;
+    font-size: 20px;
   }
 }
 #avatar {
