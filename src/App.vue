@@ -9,8 +9,8 @@
 <script>
 import * as PIXI from 'pixi.js'
 import { clearInterval } from 'timers';
-const 移动范围 = 2
-const 感染率 = 0.1
+const 移动范围 = 10
+const 感染率 = 0.05
 const 样本数 = 20000
 const 初始感染数 = 10
 const 分块尺寸 = 5
