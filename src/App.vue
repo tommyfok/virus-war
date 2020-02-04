@@ -3,19 +3,30 @@
     <div id="virusmap"></div>
     <div id="dayinfo">第{{day}}天</div>
     <ul id="info">
-      <li style="color:white">未感染</li>
-      <li style="color:yellow">潜伏期</li>
-      <li style="color:red">已确诊</li>
+      <li style="color:white">未感染({{totalCount-infectCount}})</li>
+      <li style="color:yellow">已感染({{infectCount}})</li>
+      <li style="color:red">已确诊({{quezhenCount}})</li>
       <li style="color:white">空余床位数：{{freeBedNum}}</li>
       <li style="color:white">死亡人数：{{deadCount}}</li>
       <li style="color:green">康复人数：{{healCount}}</li>
     </ul>
     <div id="form" :class="{expand:showForm}">
       <a class="btn btn-open" v-if="!showForm" @click="toggleForm">+ 调整参数</a>
-      <a class="btn btn-close" v-if="showForm" @click="toggleForm">- 调整参数</a>
+      <a class="btn btn-close" v-if="showForm" @click="toggleForm">+</a>
       <div class="form-content" v-if="showForm">
         <div>人员活动范围：<input v-model="人员活动范围" type="number"></div>
-        <button class="confirm" @click="init">重新开始</button>
+        <div>每天活动人数比例：<input v-model="每天活动人数比例" type="number"></div>
+        <div>最大床位数：<input v-model="maxFreeBedNum" type="number"></div>
+        <div>感染范围：<input v-model="infectSize" type="number"></div>
+        <div>初始感染人数：<input v-model="initInfectCount" type="number"></div>
+        <div>同区域感染率：<input v-model="infectRate" type="number"></div>
+        <div>样本数：<input v-model="totalCount" type="number"></div>
+        <div>自愈概率：<input v-model="selfHealRate" type="number"></div>
+        <div>住院康复概率：<input v-model="hospitalHealRate" type="number"></div>
+        <button class="confirm" @click="init" v-if="!inited">开始模拟</button>
+        <button class="confirm" @click="pause" v-if="inited&&!paused">暂停</button>
+        <button class="confirm" @click="goon" v-if="inited&&paused">继续</button>
+        <button class="confirm" @click="init" v-if="inited&&paused">重新开始模拟</button>
       </div>
     </div>
   </div>
@@ -23,17 +34,17 @@
 
 <script>
 import * as PIXI from 'pixi.js'
-const 人员活动范围 = 20
-const 每天活动人数比例 = 0.1
-const 同区域感染率 = 0.005
 const 样本数 = 10000
-const 初始感染数 = 50
-const 分块尺寸 = 10
+const 人员活动范围 = 5
+const 每天活动人数比例 = 0.3
+const 分块尺寸 = 5
+const 同区域感染率 = 0.1 / 分块尺寸
+const 初始感染数 = 样本数 / 2000
 const 潜伏期 = 14
-const 自愈概率 = 0.2
-const 治疗康复概率 = 0.79
-const 最大治疗天数 = 30
-const 床位数 = 20
+const 自愈概率 = 0.1
+const 治疗康复概率 = 0.9
+const 最大治疗天数 = 25
+const 床位数 = 样本数 / 500
 
 let pixi = null
 let points = []
@@ -94,20 +105,29 @@ export default {
   name: 'app',
   data: () => {
     return {
-      showForm: false,
+      showForm: true,
       day: 1,
       dayTimer: null,
       deadCount: 0,
       healCount: 0,
+      infectCount: 0,
+      quezhenCount: 0,
       人员活动范围,
+      每天活动人数比例,
       freeBedNum: 床位数,
-      configs: {
-        totalCount: 样本数
-      }
+      maxFreeBedNum: 床位数,
+      infectSize: 分块尺寸,
+      initInfectCount: 初始感染数,
+      totalCount: 样本数,
+      selfHealRate: 自愈概率,
+      hospitalHealRate: 治疗康复概率,
+      infectRate: 同区域感染率,
+      inited: false,
+      paused: false
     }
   },
   mounted() {
-    this.init()
+    this.showForm = true
   },
   methods: {
     createPoint(color=0xFFFFFF) {
@@ -119,9 +139,15 @@ export default {
       pixi.stage.addChild(g)
       g.x = x
       g.y = y
-      g.__xindex = Math.floor(g.x / 分块尺寸)
-      g.__yindex = Math.floor(g.y / 分块尺寸)
+      g.__xindex = Math.floor(g.x / this.infectSize)
+      g.__yindex = Math.floor(g.y / this.infectSize)
       return g
+    },
+    pause() {
+      this.paused = true
+    },
+    goon() {
+      this.paused = false
     },
     init() {
       if (pixi) {
@@ -129,39 +155,55 @@ export default {
       }
       // 初始化数据
       points = []
+      this.inited = true
+      this.paused = false
       this.day = 1
-      this.freeBedNum = 床位数
+      this.freeBedNum = this.maxFreeBedNum || 床位数
       this.deadCount = 0
       this.healCount = 0
+      this.infectCount = 0
+      this.quezhenCount = 0
       this.人员活动范围 = this.人员活动范围 || 人员活动范围
+      this.selfHealRate = this.selfHealRate || 自愈概率
+      this.hospitalHealRate = this.hospitalHealRate || 治疗康复概率
+      this.每天活动人数比例 = this.每天活动人数比例 || 每天活动人数比例
+      this.infectSize = this.infectSize || 分块尺寸
+      this.initInfectCount = this.initInfectCount || 初始感染数
+      this.infectRate = this.infectRate || 同区域感染率
       // 创建舞台实例
       pixi = new PIXI.Application({
         resizeTo: document.getElementById('virusmap')
       })
       document.getElementById('virusmap').innerHTML = ''
       document.getElementById('virusmap').appendChild(pixi.view)
-      for (let i = 0; i < this.configs.totalCount; i++) {
+      for (let i = 0; i < this.totalCount; i++) {
         let p = this.createPoint()
         points.push(p)
       }
-      this.infectPoints(初始感染数)
-      pixi.ticker.add(() => {
+      this.infectPoints(this.initInfectCount)
+      pixi.ticker.add(this.tickHandler)
+      this.startDayTimer()
+      this.showForm = false
+    },
+    tickHandler() {
+      if (!this.paused) {
         distMap = {}
         points.forEach(this.goAround)
-      })
-      this.startDayTimer()
+      }
     },
     startDayTimer() {
       if (this.dayTimer) {
         clearInterval(this.dayTimer)
       }
       this.dayTimer = setInterval(() => {
-        this.day++
-        this.updateHealed()
-        this.updateDead()
-        this.updateQueZhen()
-        this.updateInfect()
-      }, 1000)
+        if (!this.paused) {
+          this.day++
+          this.updateHealed()
+          this.updateDead()
+          this.updateQueZhen()
+          this.updateInfect()
+        }
+      }, 2000)
     },
     heal(p) {
       if (p.infectStatus !== 2) {
@@ -186,6 +228,10 @@ export default {
       if (p.infectStatus !== 2) {
         return
       }
+      this.deadCount++
+      if (p.__inHospital === true) {
+        this.freeBedNum++
+      }
       let newp = this.createPoint(0x333333)
       newp.infectStatus = 4
       newp.x = p.x
@@ -196,7 +242,6 @@ export default {
       points[pIndex] = newp
       p.destroy()
       pixi.stage.addChild(newp)
-      this.deadCount++
     },
     updateHealed() {
       points.forEach(p => {
@@ -213,8 +258,8 @@ export default {
       })
     },
     updateInfect() {
-      let maxXIndex = Math.floor(pixi.renderer.width / 分块尺寸)
-      let maxYIndex = Math.floor(pixi.renderer.height / 分块尺寸)
+      let maxXIndex = Math.floor(pixi.renderer.width / this.infectSize)
+      let maxYIndex = Math.floor(pixi.renderer.height / this.infectSize)
       let blocks = {}
       points.forEach(p => {
         let key = `${p.__xindex},${p.__yindex}`
@@ -229,7 +274,7 @@ export default {
         let badCount = infectedPoints.length + quezhenPoints.length
         if (badCount > 0) {
           healthyPoints.forEach(hp => {
-            let isInfect = Math.random() < 同区域感染率
+            let isInfect = Math.random() < this.infectRate
             if (isInfect) {
               this.infect(hp)
             }
@@ -248,11 +293,11 @@ export default {
       getRandItems(points, count).forEach(this.infect)
     },
     goAround(p) {
-      if (p.infectStatus === 4) {
-        // dead
+      if ((p.infectStatus === 2 && p.__inHospital) || p.infectStatus === 4) {
+        // dead or in hospital
         return
       }
-      if (Math.random() < 每天活动人数比例) {
+      if (Math.random() < this.每天活动人数比例) {
         p.x += gaussianRand() * this.人员活动范围 - this.人员活动范围 / 2
         p.y += gaussianRand() * this.人员活动范围 - this.人员活动范围 / 2
         p.__xindex = Math.floor(p.x / 分块尺寸)
@@ -263,6 +308,7 @@ export default {
       if (p.infectStatus > 0) {
         return
       }
+      this.infectCount++
       let newp = this.createPoint(0xf3ff5d)
       newp.infectStatus = 1
       newp.x = p.x
@@ -280,6 +326,7 @@ export default {
       if (p.infectStatus > 1) {
         return
       }
+      this.quezhenCount++
       let newp = this.createPoint(0xff0000)
       newp.infectStatus = 2
       newp.x = p.x
@@ -288,7 +335,7 @@ export default {
       if (this.freeBedNum > 0) {
         // 有床位
         this.freeBedNum--
-        let willGood = Math.random() < 治疗康复概率
+        let willGood = Math.random() < this.hospitalHealRate
         let outDay = this.day + Math.ceil(最大治疗天数 * gaussianRand())
         newp.__inHospital = true
         if (willGood) {
@@ -298,7 +345,7 @@ export default {
         }
       } else {
         // 没有床位，只能自求多福
-        let willGood = Math.random() < 自愈概率
+        let willGood = Math.random() < this.selfHealRate
         let outDay = this.day + Math.ceil(最大治疗天数 * gaussianRand())
         if (willGood) {
           newp.__healDay = outDay
@@ -381,10 +428,28 @@ html, body {
   .btn {
     font-size: 16px;
     line-height: 40px;
+
+    &.btn-close {
+      display: block;
+      position: absolute;
+      right: 10px;
+      top: -50px;
+      width: 40px;
+      height: 40px;
+      background: rgba(85, 115, 252, 0.836);
+      color: #fff;
+      line-height: 35px;
+      text-align: center;
+      border-radius: 20px;
+      transform: rotate(45deg);
+      font-size: 30px;
+    }
   }
 
   .confirm {
     background: #fff;
+    display: inline-block;
+    margin-right: 10px;
   }
 }
 </style>
