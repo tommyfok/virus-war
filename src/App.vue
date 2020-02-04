@@ -1,15 +1,20 @@
 <template>
   <div id="container">
-    病毒图：
     <div id="virusmap"></div>
-    第{{day}}天
+    <div id="dayinfo">第{{day}}天</div>
+    <ul id="tuli">
+      <li style="color:white">未感染</li>
+      <li style="color:yellow">潜伏期</li>
+      <li style="color:red">已确诊</li>
+    </ul>
   </div>
 </template>
 
 <script>
 import * as PIXI from 'pixi.js'
 import { clearInterval } from 'timers';
-const 移动范围 = 10
+const 人员活动范围 = 10
+const 每天活动人数比例 = 0.02
 const 感染率 = 0.05
 const 样本数 = 20000
 const 初始感染数 = 10
@@ -94,7 +99,7 @@ export default {
       let x = gaussianRand() * pixi.renderer.width, y = gaussianRand() * pixi.renderer.height
       let g = new PIXI.Graphics()
       g.beginFill(color)
-      g.drawCircle(0, 0, 1)
+      g.drawCircle(0, 0, .5)
       g.endFill()
       pixi.stage.addChild(g)
       g.x = x
@@ -109,7 +114,9 @@ export default {
       }
       points = []
       this.startTime = Date.now()
-      pixi = new PIXI.Application()
+      pixi = new PIXI.Application({
+        resizeTo: document.getElementById('virusmap')
+      })
       document.getElementById('virusmap').innerHTML = ''
       document.getElementById('virusmap').appendChild(pixi.view)
       for (let i = 0; i < this.configs.totalCount; i++) {
@@ -170,21 +177,13 @@ export default {
       getRandItems(points, count).forEach(this.infect)
     },
     goAround(p) {
-      p.x += gaussianRand() * 移动范围 - 移动范围 / 2
-      p.y += gaussianRand() * 移动范围 - 移动范围 / 2
-      p.__xindex = Math.floor(p.x / 分块尺寸)
-      p.__yindex = Math.floor(p.y / 分块尺寸)
+      if (Math.random() < 每天活动人数比例) {
+        p.x += gaussianRand() * 人员活动范围 - 人员活动范围 / 2
+        p.y += gaussianRand() * 人员活动范围 - 人员活动范围 / 2
+        p.__xindex = Math.floor(p.x / 分块尺寸)
+        p.__yindex = Math.floor(p.y / 分块尺寸)
+      }
     },
-    // getNearByPoints(p) {
-    //   let result = []
-    //   let distSquare = square(传染距离)
-    //   points.forEach(_p => {
-    //     if (dist(p, _p) < distSquare) {
-    //       result.push(_p)
-    //     }
-    //   })
-    //   return result
-    // },
     infect(p) {
       if (p.infectStatus > 0) {
         return
@@ -219,6 +218,46 @@ export default {
 }
 </script>
 
-<style>
+<style lang="less">
+html, body {
+  padding: 0;
+  margin: 0;
+  height: 100%;
+}
+#container {
+  height: 100%;
+  background-color: #000;
+}
+#dayinfo {
+  position: fixed;
+  background: rgba(0,0,0,.5);
+  color:#fff;
+  bottom: 10px;
+  right: 10px;
+  padding: 0 10px;
+  border-radius: 3px;
+  font-size: 20px;
+  line-height: 40px;
+}
+#virusmap {
+  width: 100%;
+  height: 50%;
 
+  canvas {
+    width: 100%;
+    height: 100%;
+    transform: translateY(50%);
+  }
+}
+#tuli {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  font-size: 12px;
+  line-height: 18px;
+  background: rgba(0,0,0,.5);
+  padding: 10px 10px 10px 25px;
+  margin: 0;
+  border-radius: 5px;
+}
 </style>
