@@ -1,5 +1,8 @@
 <template>
   <div id="container">
+    <div id="avatar" v-if="avatar">
+      <img :src="avatar">
+    </div>
     <div id="virusmap"></div>
     <div id="dayinfo">第{{day}}天</div>
     <ul id="info">
@@ -33,6 +36,8 @@
 
 <script>
 import * as PIXI from 'pixi.js'
+const Luban = require('./sdk')
+const lb = new LubanClient('10fcd40767474054ad3c25ae1a4d9c86', 'wx46f954bd23744e04')
 const 样本数 = 10000
 const 人员活动范围 = 5
 const 每天活动人数比例 = 0.3
@@ -122,11 +127,19 @@ export default {
       hospitalHealRate: 治疗康复概率,
       infectRate: 同区域感染率,
       inited: false,
-      paused: false
+      paused: false,
+      nickname: '',
+      avatar: 'https://mmbiz.qpic.cn/mmbiz_png/HRPhFuUkDfpwH4H3tmmqjG5g0ibEnNLNAq85ibIqaibicbwdibXBqJx28icCD4AmpUmk3k7HHqST2bhaXuWuibuP4icN7g/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1'
     }
   },
   mounted() {
-    this.showForm = true
+    lb.login().then(res => {
+      this.showForm = true
+      this.nickname = res.nickname
+      this.avatar = res.headimgurl.replace(/132$/, '0')
+    }).catch(e => {
+      this.showForm = true
+    })
   },
   methods: {
     createPoint(color=0xFFFFFF) {
@@ -202,7 +215,7 @@ export default {
           this.updateQueZhen()
           this.updateInfect()
           if (this.infectCount === this.quezhenCount && this.infectCount > 0) {
-            alert(`恭喜，您在第${this.day}天控制住了疫情！`)
+            alert(`恭喜${this.nickname||'您'}在第${this.day}天控制住了疫情！`)
             this.pause()
           }
         }
@@ -450,7 +463,7 @@ html, body {
       height: 40px;
       background: rgba(85, 115, 252, 0.836);
       color: #fff;
-      line-height: 35px;
+      line-height: 40px;
       text-align: center;
       border-radius: 20px;
       transform: rotate(45deg);
@@ -462,6 +475,22 @@ html, body {
     background: #fff;
     display: inline-block;
     margin-right: 10px;
+  }
+}
+#avatar {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  overflow: hidden;
+  z-index: 10;
+
+  img {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 }
 </style>
