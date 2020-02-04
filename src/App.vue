@@ -24,8 +24,7 @@
         <div>自愈概率：<input v-model="selfHealRate" type="number"></div>
         <div>住院康复概率：<input v-model="hospitalHealRate" type="number"></div>
         <button class="confirm" @click="init" v-if="!inited">开始模拟</button>
-        <button class="confirm" @click="pause" v-if="inited&&!paused">暂停</button>
-        <button class="confirm" @click="goon" v-if="inited&&paused">继续</button>
+        <button class="confirm" @click="toggleForm" v-if="inited&&paused">继续</button>
         <button class="confirm" @click="init" v-if="inited&&paused">重新开始模拟</button>
       </div>
     </div>
@@ -202,8 +201,12 @@ export default {
           this.updateDead()
           this.updateQueZhen()
           this.updateInfect()
+          if (this.infectCount === this.quezhenCount && this.infectCount > 0) {
+            alert(`恭喜，您在第${this.day}天控制住了疫情！`)
+            this.pause()
+          }
         }
-      }, 2000)
+      }, 1000)
     },
     heal(p) {
       if (p.infectStatus !== 2) {
@@ -360,6 +363,15 @@ export default {
     },
     toggleForm() {
       this.showForm = !this.showForm
+      if (this.showForm === true) {
+        if (!this.paused) {
+          this.pause()
+        }
+      } else {
+        if (this.paused) {
+          this.goon()
+        }
+      }
     }
   }
 }
